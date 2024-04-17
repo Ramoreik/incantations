@@ -10,15 +10,26 @@
 # - gnu coreutils
 # - Xephyr (if you want X isolation)
 
-# -- Shared --
+# -- TODO --
 #
 # TODO: Create demagus, delete one or many images on a given remote;
 # TODO: Add the use of STDIN for certain commands. allowing stuff like: invokus < script.sh or invokus <<< "$()"
-#
 
-[[ -f "$(which incus)" ]] || (echo "[!] Missing incus-client, cannot run."; exit 1)
-[[ -f "$(which fzf)" ]] || (echo "[!] Missing fzf, cannot run."; exit 1)
-[[ -f "$(which Xephyr)" ]] || echo "[!] Missing Xephyr, xeph and xephus will not work."
+
+if [[ -f "$(which incus)" ]]; then
+  echo "[!] Missing incus-client, cannot run."; 
+  exit 1;
+fi
+
+if [[ -f "$(which fzf)" ]];  then
+  echo "[!] Missing fzf, cannot run.";
+  exit 1;
+fi
+
+if [[ -f "$(which Xephyr)" ]]; then 
+  echo "[!] Missing Xephyr, xeph and xephus will not work."
+fi
+
 
 read -rd '' XEPHYRUS_TEMPLATE_PROFILE << EOF
 config: {}

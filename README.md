@@ -1,6 +1,6 @@
 # THIS IS INCUS INCANTATIONS
 
-The names for incantations are mostly dumb and temporary.
+# Why ?
 
 ![](./charlie.webp)
 

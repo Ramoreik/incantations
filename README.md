@@ -63,7 +63,7 @@
 
 ```bash
 [[ -d "${HOME}/.local/bin" ]] || mkdir -p "${HOME}/.local/bin"
-git clone git@github.com:Ramoreik/incantations.git
+git clone https://github.com/Ramoreik/incantations.git
 cd incantations
 mv incantations.sh "${HOME}/.local/bin/incantations"
 echo ". ${HOME}/.local/bin/incantations.sh" >> "${HOME}/.bashrc"

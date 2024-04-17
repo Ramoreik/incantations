@@ -16,6 +16,10 @@
 # TODO: Add the use of STDIN for certain commands. allowing stuff like: invokus < script.sh or invokus <<< "$()"
 #
 
+[[ -f "$(which incus)" ]] || (echo "[!] Missing incus-client, cannot run."; exit 1)
+[[ -f "$(which fzf)" ]] || (echo "[!] Missing fzf, cannot run."; exit 1)
+[[ -f "$(which Xephyr)" ]] || echo "[!] Missing Xephyr, xeph and xephus will not work."
+
 read -rd '' XEPHYRUS_TEMPLATE_PROFILE << EOF
 config: {}
 description: Automatically created by incantations for Xephyr :DISPLAY:

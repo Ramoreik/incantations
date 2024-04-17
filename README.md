@@ -66,7 +66,7 @@
 git clone https://github.com/Ramoreik/incantations.git
 cd incantations
 mv incantations.sh "${HOME}/.local/bin/incantations"
-echo ". ${HOME}/.local/bin/incantations.sh" >> "${HOME}/.bashrc"
+echo ". ${HOME}/.local/bin/incantations" >> "${HOME}/.bashrc"
 ```
 
 ```bash

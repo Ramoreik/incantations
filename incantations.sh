@@ -357,7 +357,8 @@ invokus () {
   local STDIN_SCRIPT=""
 
   # STDIN has to be consumed before it is read by the calls to `fzf`, otherwise it will break.
-  if IFS= read -d '' -n 1; then
+  if IFS= read -d '' -t 0.1 -n 1; then
+    echo "read stdin"
     STDIN_SCRIPT="$(cat /dev/stdin)"
   fi
   [[ -z "${REMOTE}" ]] && REMOTE="images"

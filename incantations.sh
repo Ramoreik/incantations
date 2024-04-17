@@ -14,22 +14,10 @@
 #
 # TODO: Create demagus, delete one or many images on a given remote;
 # TODO: Add the use of STDIN for certain commands. allowing stuff like: invokus < script.sh or invokus <<< "$()"
-
-
-if [[ -f "$(which incus)" ]]; then
-  echo "[!] Missing incus-client, cannot run."; 
-  exit 1;
-fi
-
-if [[ -f "$(which fzf)" ]];  then
-  echo "[!] Missing fzf, cannot run.";
-  exit 1;
-fi
-
-if [[ -f "$(which Xephyr)" ]]; then 
-  echo "[!] Missing Xephyr, xeph and xephus will not work."
-fi
-
+#
+which incus &>/dev/null || { echo '[!] incantations :: Incus missing, exiting.'; return; }
+which fzf &>/dev/null || { echo '[!] incantations :: Incus missing, exiting.'; return; }
+which Xephyr &>/dev/null || { echo '[!] incantations :: Xephyr missing, xephus and xeph will not work.'; }
 
 read -rd '' XEPHYRUS_TEMPLATE_PROFILE << EOF
 config: {}

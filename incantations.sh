@@ -15,9 +15,18 @@
 # TODO: Create demagus, delete one or many images on a given remote;
 # TODO: Add the use of STDIN for certain commands. allowing stuff like: invokus < script.sh or invokus <<< "$()"
 #
-which incus &>/dev/null || { echo '[!] incantations :: Incus missing, exiting.'; return; }
-which fzf &>/dev/null || { echo '[!] incantations :: Incus missing, exiting.'; return; }
-which Xephyr &>/dev/null || { echo '[!] incantations :: Xephyr missing, xephus and xeph will not work.'; }
+
+
+which incus &>/dev/null \
+  || { echo '[!] incantations :: Incus missing, exiting.'; return; }
+
+which fzf &>/dev/null \
+  || { echo '[!] incantations :: Incus missing, exiting.'; return; }
+
+which Xephyr &>/dev/null \
+  || { 
+  echo '[!] incantations :: Xephyr missing, xephus and xeph will not work.'; }
+
 
 read -rd '' XEPHYRUS_TEMPLATE_PROFILE << EOF
 config: {}
@@ -30,6 +39,12 @@ devices:
     type: proxy
 name: xephyr-:DISPLAY:
 EOF
+
+
+CPU_CHOICES='1\n2\n4\n6\n8\n10'
+MEMORY_CHOICES='2GB\n4GB\n8GB\n16GB\n32GB'
+ROOT_SIZE_CHOICES='20GB\n30GB\n40GB\n60GB\n\n80GB\n100GB'
+DEFAULT_FZF_HEIGHT="~40%"
 
 
 incus_fzf () {
@@ -64,11 +79,14 @@ incus_select_instance() {
   local PROMPT="${3}"
   local MULTI="${4}"
   local INSTANCES=""
+  local LABEL="select instance"
 
   INSTANCES=$(incus list -f csv -c n,s)
   [[ -n "${FILTER}" ]] && INSTANCES=$(echo "${INSTANCES}" | grep -v "${FILTER}")
   [[ -n "${QUERY}" ]] && INSTANCES=$(echo "${INSTANCES}" | grep "${QUERY}")
-  echo "${INSTANCES}" |  cut -d',' -f 1 | incus_fzf "${PROMPT}" "~40%" 'select instance' "${MULTI}"
+  echo "${INSTANCES}" \
+    |  cut -d',' -f 1 \
+    | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}" "${MULTI}"
 }
 
 
@@ -78,11 +96,14 @@ incus_select_image () {
   local FILTER="${3}"
   local PROMPT="${4}"
   local IMAGES=""
+  local LABEL="select image"
 
   IMAGES=$(incus image alias ls "${REMOTE}:" -f csv )
-  [[ -n "${FILTER}" ]] && IMAGES=$(echo "${IMAGES}"|grep -v "${FILTER}")
+  [[ -n "${FILTER}" ]] && IMAGES=$(echo "${IMAGES}" | grep -v "${FILTER}")
   [[ -n "${QUERY}" ]] && IMAGES=$(echo "${IMAGES}" | grep "${QUERY}")
-  echo "${IMAGES}" | cut -d',' -f 1 | incus_fzf "${PROMPT}" "~40%" 'select image'
+  echo "${IMAGES}" \
+    | cut -d',' -f 1 \
+    | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}"
 }
 
 
@@ -92,18 +113,21 @@ incus_select_profile() {
   local PROMPT="${3}"
   local MULTI="${4}"
   local PROFILES=""
+  local LABEL="select profile"
 
-  PROFILES=$(incus profile list -f csv )
-  [[ -n "${FILTER}" ]] && PROFILES=$(echo "${PROFILES}"|grep -v "${FILTER}")
+  PROFILES=$(incus profile list -f csv)
+  [[ -n "${FILTER}" ]] && PROFILES=$(echo "${PROFILES}" | grep -v "${FILTER}")
   [[ -n "${QUERY}" ]] && PROFILES=$(echo "${PROFILES}" | grep "${QUERY}")
-  echo "${PROFILES}" | cut -d',' -f 1 | incus_fzf "${PROMPT}" "~40%" 'select profile' "${MULTI}"
+  echo "${PROFILES}" \
+    | cut -d',' -f 1 \
+    | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}" "${MULTI}"
 }
 
 
 incus_select_files() {
   local PROMPT="${1}"
-
-  incus_fzf "${PROMPT}" "~30%" 'select file' 'yes'
+  local LABEL="select file"
+  incus_fzf "${PROMPT}" "~30%" "${LABEL}" 'yes'
 }
 
 
@@ -111,8 +135,25 @@ incus_question() {
   local QUESTION="${1}"
   local CHOICES="${2}"
   local MULTI="${3}"
+  local LABEL="QUESTION"
+  echo -en "${CHOICES}"\
+    | incus_fzf "${QUESTION}" "~5%" "${LABEL}" "${MULTI}"
+}
 
-  echo -en "${CHOICES}"| incus_fzf "${QUESTION}" "~5%" 'question' "${MULTI}"
+
+incus_create_vm() {
+  local NAME="${1}"
+  local REMOTE="${2}"
+  local IMAGE="${3}"
+
+  CPU=$(incus_question 'How many vCPUs? ' "${CPU_CHOICES}")
+  MEMORY=$(incus_question 'How much memory ?', "${MEMORY_CHOICES}")
+  ROOT_SIZE=$(incus_question 'How much storage ?', "${ROOT_SIZE_CHOICES}")
+  incus launch --vm \
+      -c limits.cpu="${CPU}" \
+      -c limits.memory="${MEMORY}" \
+      -d root,size="${ROOT_SIZE}" \
+      "${REMOTE}:${IMAGE}" -- "${NAME}"
 }
 
 
@@ -199,7 +240,11 @@ malus () {
 
   wait_for_prompt "${INSTANCE}"
 
-  USERS=$(incus exec "${INSTANCE}" -- cat /etc/passwd | grep -v '/sbin/nologin' | grep -v '/bin/false' | cut -d':' -f 1)
+  USERS=$(\
+      incus exec "${INSTANCE}" -- cat /etc/passwd \
+      | grep -v '/sbin/nologin' \
+      | grep -v '/bin/false' \
+      | cut -d':' -f 1)
   USER=$(incus_question "Which user ?" "${USERS}")
   [[ -z "${USER}" ]] && return 
 
@@ -298,7 +343,11 @@ reprofus () {
   INSTANCE=$(incus_select_instance '' '' 'profus' )
   [[ -z "${INSTANCE}" ]] && return
 
-  INSTANCE_PROFILES=$(incus config get "${INSTANCE}" -p profiles|tr -d '['|tr -d ']' |tr ' ' '\n')
+  INSTANCE_PROFILES=$(\
+    incus config get "${INSTANCE}" -p profiles \
+    |tr -d '[' \
+    |tr -d ']' \
+    |tr ' ' '\n')
   PROFILES=$(incus_question 'Which profiles to remove ?' "${INSTANCE_PROFILES}" )
   [[ -z "${PROFILE}" ]] && return
 
@@ -330,9 +379,9 @@ isus () {
   local ROOT_SIZE="$4"
 
   [[ -z "${NAME}" ]] && NAME="isus-$(openssl rand -hex 5)"
-  CPU=$(incus_question 'vcpu' '1\n2\n3\n4\n6\n8\n10')
-  MEMORY=$(incus_question 'mem' '2GB\n4GB\n8GB\n16GB\n32GB')
-  ROOT_SIZE=$(incus_question 'storage', '10GB\n20GB\n30GB\n40GB\n50GB')
+  CPU=$(incus_question 'How many vCPUs? ' "${CPU_CHOICES}")
+  MEMORY=$(incus_question 'How much memory ?' "${MEMORY_CHOICES}")
+  ROOT_SIZE=$(incus_question 'How much storage ?', "${ROOT_SIZE_CHOICES}")
 
   incus init  --empty \
     --vm \
@@ -343,7 +392,8 @@ isus () {
 
   ISO=$(incus_select_files 'isus')
   [[ -n "${ISO}" && -f "${ISO}" ]] || return
-  incus config device add "${NAME}" iso disk source="$PWD/${ISO}" boot.priority=10
+  incus config device add "${NAME}" \
+    iso disk source="$PWD/${ISO}" boot.priority=10
 
   incus start "${NAME}" --console
   incus console "${NAME}" --type=vga
@@ -354,43 +404,42 @@ invokus () {
   local INIT="${1}"
   local NAME="${2}"
   local REMOTE="${3}"
+  [[ -z "${REMOTE}" ]] && REMOTE="images"
+
+  local INSTANCE_TYPE=""
+  local IMAGE=""
   local STDIN_SCRIPT=""
 
-  # STDIN has to be consumed before it is read by the calls to `fzf`, otherwise it will break.
+  # NOTE: STDIN has to be consumed before it is read by the calls to `fzf`, otherwise it will break.
   if IFS= read -d '' -t 0.1 -n 1; then
     echo "read stdin"
     STDIN_SCRIPT="$(cat /dev/stdin)"
   fi
-  [[ -z "${REMOTE}" ]] && REMOTE="images"
 
-  local VM=""
-  local SELECTION=""
+  INSTANCE_TYPE=$(incus_question '' 'container\nvm')
+  [[ -z "${INSTANCE_TYPE}" ]] && { echo "[!] Did not choose and instance type, exiting."; return; }
 
-  VM=$(incus_question 'invokus :: VM ?' 'yes\nno')
-  [[ -z "${VM}" ]] && return
+  if [[ "${INSTANCE_TYPE}" == "vm" ]]; then
+    IMAGE=$(incus_select_image "${REMOTE}" 'VIRTUAL-MACHINE' '' 'invokus')
+    [[ -z "${IMAGE}" ]] && return
 
-  if [[ "yes" == "${VM}" ]]; then
+    SUFFIX="$(echo "${IMAGE}" | tr '/' '-')-$(openssl rand -hex 3)"
+    [[ -z "${NAME}" ]] && NAME="vm-${SUFFIX}"
 
-    SELECTION=$(incus_select_image "${REMOTE}" 'VIRTUAL-MACHINE' '' 'invokus')
-    [[ -z "${SELECTION}" ]] && return
-    [[ -z "${NAME}" ]] && NAME="vm-$(echo "${SELECTION}" | tr '/' '-')-$(openssl rand -hex 3)"
-
-    CPU=$(incus_question 'vcpu' '1\n2\n3\n4\n6\n8\n10')
-    MEMORY=$(incus_question 'mem' '2GB\n4GB\n8GB\n16GB\n32GB')
-    ROOT_SIZE=$(incus_question 'storage', '10GB\n20GB\n30GB\n40GB\n50GB')
-    incus launch --vm \
-      -c limits.cpu="${CPU}" \
-      -c limits.memory="${MEMORY}" \
-      -d root,size="${ROOT_SIZE}" \
-      "${REMOTE}:${SELECTION}" -- "${NAME}"
-
+    incus_create_vm "${NAME}" "${REMOTE}" "${IMAGE}"
     wait_for_prompt "${NAME}"
 
-  elif [[ "no" == "${VM}" ]]; then
-    SELECTION=$(incus_select_image "${REMOTE}" 'CONTAINER' '' 'invokus')
-    [[ -z "${SELECTION}" ]] && return
-    [[ -z "${NAME}" ]] && NAME="cnt-$(echo "${SELECTION}" | tr '/' '-')-$(openssl rand -hex 2)"
-    incus launch "${REMOTE}:${SELECTION}" -- "${NAME}"
+  elif [[ "${INSTANCE_TYPE}" == "container" ]]; then
+    IMAGE=$(incus_select_image "${REMOTE}" 'CONTAINER' '' 'invokus')
+    [[ -z "${IMAGE}" ]] && return
+
+    SUFFIX="$(echo "${IMAGE}" | tr '/' '-')-$(openssl rand -hex 3)"
+    [[ -z "${NAME}" ]] && NAME="cnt-${SUFFIX}"
+
+    incus launch "${REMOTE}:${IMAGE}" -- "${NAME}"
+
+  else
+    echo "[!] Invalid choice, exiting."
   fi
 
   if [[ -n "${STDIN_SCRIPT}" ]]; then

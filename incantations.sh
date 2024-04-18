@@ -51,10 +51,10 @@ incus_fzf () {
       --height="${HEIGHT}" \
       --border="${BORDER}" \
       --border-label "${BORDER_LABEL}" \
-      --color=fg:#b3b3b3,bg:#121c1f,hl:#009ab5 \
-      --color=fg+:#d0d0d0,bg+:#121c1f,hl+:#0adaff \
-      --color=info:#9cffd4,prompt:#f08127,pointer:#f08127 \
-      --color=marker:#00ddff,spinner:#f08127,header:#87afaf
+      --color="fg:#b3b3b3,bg:#121c1f,hl:#009ab5" \
+      --color="fg+:#d0d0d0,bg+:#121c1f,hl+:#0adaff" \
+      --color="info:#9cffd4,prompt:#f08127,pointer:#f08127" \
+      --color="marker:#00ddff,spinner:#f08127,header:#87afaf"
 }
 
 
@@ -400,9 +400,6 @@ invokus () {
   if [[ -n "${INIT}"  ]]; then
     if [[ -f "${INIT}" ]]; then
       incus exec "${NAME}" -- bash <<< "$(cat "${INIT}")"
-    else
-      set -x
-      incus exec "${NAME}" -- echo "${INIT}" | bash
     fi 
   fi
 

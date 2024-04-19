@@ -3,6 +3,7 @@
 # The idea is to be able to quickly spawn, configure and dispose of instances.
 # As well as transfer files easily between them.
 #
+#
 # -- Dependencies --
 # - https://github.com/junegunn/fzf
 # - incus-client and a working incusd ideally local.
@@ -16,6 +17,17 @@
 # TODO: Add the use of STDIN for certain commands. allowing stuff like: invokus < script.sh or invokus <<< "$()"
 # TODO: Add project management.
 # TODO: add profiles choice for invokus
+#
+# TODO: add clipboard forwarding using wl-clip & xclip. 
+#       A command that will let the user send the clipboard of a display to another display.
+#       From the host to a Xephyr window or between two Xephyr windows.
+
+# TODO: Explore the option for launching isolated applications in a xephyr window.
+#       - Dynamically chose a DISPLAY number
+#       - Spawn a Xephyr window with an openbox or dwm inside.
+#       - Xephyr window should adapt to WM or DE in terms of screen space.
+#       - Create some template to quickly create images for each applications. 
+#       - See if they can be made ephemerous. (Container auto-destroys after the process closes.)
 
 
 which incus &>/dev/null \

@@ -14,7 +14,8 @@
 #
 # TODO: Create demagus, delete one or many images on a given remote;
 # TODO: Add the use of STDIN for certain commands. allowing stuff like: invokus < script.sh or invokus <<< "$()"
-#
+# TODO: Add project management.
+# TODO: add profiles choice for invokus
 
 
 which incus &>/dev/null \
@@ -159,7 +160,6 @@ incus_create_vm() {
 
 wait_for_prompt () {
   local INSTANCE="${1}"
-
   while true; do
     if incus exec "${INSTANCE}" -- echo ok &>/dev/null; then
       return
@@ -249,9 +249,9 @@ malus () {
   [[ -z "${USER}" ]] && return 
 
   if [[ -n "${SCRIPT}" ]]; then
-    incus exec "${INSTANCE}" -- "su" "${USER}" <<< "$(cat "${SCRIPT}")"
+    incus exec "${INSTANCE}" -- su -l "${USER}" <<< "$(cat "${SCRIPT}")"
   else
-    incus exec "${INSTANCE}" -- "su" "${USER}"
+    incus exec "${INSTANCE}" -- su -l "${USER}"
   fi
 }
 
@@ -380,8 +380,11 @@ isus () {
 
   [[ -z "${NAME}" ]] && NAME="isus-$(openssl rand -hex 5)"
   CPU=$(incus_question 'How many vCPUs? ' "${CPU_CHOICES}")
+  [[ -z "${CPU}" ]] && return
   MEMORY=$(incus_question 'How much memory ?' "${MEMORY_CHOICES}")
+  [[ -z "${MEMORY}" ]] && return
   ROOT_SIZE=$(incus_question 'How much storage ?', "${ROOT_SIZE_CHOICES}")
+  [[ -z "${ROOT_SIZE}" ]] && return
 
   incus init  --empty \
     --vm \
@@ -483,14 +486,16 @@ publicus () {
   incus publish "${INSTANCE}" --alias "${ALIAS}"
 }
 
+
 transfus () {
   local SRC=""
   local DST=""
 
-  SRC=$(incus_select_instance '' '' 'src')
+  SRC=$(incus_select_instance 'RUNNING' '' 'src')
   [[ -z "${SRC}" ]] && return
 
-  SHARED_FILES=$(incus exec "${SRC}" -- ls /shared)
+  # TODO : kinda ugly, fix
+  SHARED_FILES=$(incus exec "${SRC}" -- bash -c "[[ -d '/shared' ]] && ls -ap /shared | grep -v '/'")
 
   FILES=$(incus_question 'files to transfer' "${SHARED_FILES}" 'yes')
   [[ -z "${FILES}" ]] && return
@@ -500,9 +505,9 @@ transfus () {
 
   for FILE in ${FILES}; do
     FILENAME=$(basename "${FILE}")
+    incus exec "${DST}" -- bash -c "[[ -d '/shared' ]] || mkdir /shared"
     incus exec "${SRC}" -- cat "/shared/${FILE}" |incus exec "${DST}" -- dd "of=/shared/${FILENAME}" status=progress
   done
-
 }
 
 

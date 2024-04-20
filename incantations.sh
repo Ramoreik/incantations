@@ -28,6 +28,9 @@
 #       - Xephyr window should adapt to WM or DE in terms of screen space.
 #       - Create some template to quickly create images for each applications. 
 #       - See if they can be made ephemerous. (Container auto-destroys after the process closes.)
+#
+# TODO: Invokus // isus :: Adapt questions to represent often used combinations. ([2 cpu, 4GB, 30GB storage][1 cpu, 1GB, 20GB], etc)
+# TODO: Instead of adding more and more words, there could be a flow to each one for various actions.
 
 
 which incus &>/dev/null \
@@ -132,6 +135,23 @@ incus_select_profile() {
   [[ -n "${FILTER}" ]] && PROFILES=$(echo "${PROFILES}" | grep -v "${FILTER}")
   [[ -n "${QUERY}" ]] && PROFILES=$(echo "${PROFILES}" | grep "${QUERY}")
   echo "${PROFILES}" \
+    | cut -d',' -f 1 \
+    | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}" "${MULTI}"
+}
+
+
+incus_select_project() {
+  local QUERY="${1}"
+  local FILTER="${2}"
+  local PROMPT="${3}"
+  local MULTI="${4}"
+  local PROJECTS=""
+  local LABEL="select project"
+
+  PROJECTS=$(incus project list -f csv|cut -d ',' -f 1)
+  [[ -n "${FILTER}" ]] && PROJECTS=$(echo "${PROJECTS}" | grep -v "${FILTER}")
+  [[ -n "${QUERY}" ]] && PROJECTS=$(echo "${PROJECTS}" | grep "${QUERY}")
+  echo "${PROJECTS}" \
     | cut -d',' -f 1 \
     | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}" "${MULTI}"
 }
@@ -294,6 +314,21 @@ delus () {
   done
 }
 
+projectus () {
+  local NAME="${1}"
+  local REMOTE="${2}"
+  [[ -z "${REMOTE}" ]] && REMOTE="local"
+
+  if [[ -z "${NAME}" ]]; then
+    SELECTION=$(incus_select_project '' '' 'projectus')
+    [[ -z "${SELECTION}" ]] && return
+    incus project switch "${SELECTION}"
+  else
+    REPLY=$(incus_question "Are you sure to create '${NAME}' project ?" 'yes\nno')
+    incus project create "${NAME}"
+    incus project switch "${NAME}"
+  fi
+}
 
 stopus () {
   local SELECTION=""
@@ -427,7 +462,6 @@ invokus () {
 
   # NOTE: STDIN has to be consumed before it is read by the calls to `fzf`, otherwise it will break.
   if IFS= read -d '' -t 0.1 -n 1; then
-    echo "read stdin"
     STDIN_SCRIPT="$(cat /dev/stdin)"
   fi
 
@@ -499,6 +533,25 @@ publicus () {
 }
 
 
+sendus () {
+  local FILES=""
+  local INSTANCE=""
+
+  INSTANCE=$(incus_select_instance 'RUNNING' '' 'sendus')
+  [[ -z "${INSTANCE}" ]] && return
+
+  FILES=$(incus_select_files 'sendus')
+  [[ -z "${FILES}" ]] && return
+
+  for FILE in $FILES; do
+    if [ ! -f "${FILE}" ]; then
+      echo "[!] File does not exist."
+      return
+    fi 
+  incus file push -p "${FILE}" "${INSTANCE}/shared/"
+  done
+}
+
 transfus () {
   local SRC=""
   local DST=""
@@ -568,21 +621,3 @@ xephus () {
 }
 
 
-sendus () {
-  local FILES=""
-  local INSTANCE=""
-
-  INSTANCE=$(incus_select_instance 'RUNNING' '' 'sendus')
-  [[ -z "${INSTANCE}" ]] && return
-
-  FILES=$(incus_select_files 'sendus')
-  [[ -z "${FILES}" ]] && return
-
-  for FILE in $FILES; do
-    if [ ! -f "${FILE}" ]; then
-      echo "[!] File does not exist."
-      return
-    fi 
-  incus file push -p "${FILE}" "${INSTANCE}/shared/"
-  done
-}

@@ -28,7 +28,7 @@
 #       - Xephyr window should adapt to WM or DE in terms of screen space.
 #       - Create some template to quickly create images for each applications. 
 #       - See if they can be made ephemerous. (Container auto-destroys after the process closes.)
-#
+
 # TODO: Invokus // isus :: Adapt questions to represent often used combinations. ([2 cpu, 4GB, 30GB storage][1 cpu, 1GB, 20GB], etc)
 # TODO: Instead of adding more and more words, there could be a flow to each one for various actions.
 
@@ -396,7 +396,7 @@ reprofus () {
     |tr -d ']' \
     |tr ' ' '\n')
   PROFILES=$(incus_question 'Which profiles to remove ?' "${INSTANCE_PROFILES}" )
-  [[ -z "${PROFILE}" ]] && return
+  [[ -z "${PROFILES}" ]] && return
 
   for PROFILE in $PROFILES; do
     incus profile remove "${INSTANCE}" "${PROFILE}"
@@ -586,6 +586,28 @@ xeph () {
                     ":${INSTANCE_DISPLAY}" &> "$HOME/.cache/xephyrus/${PROFILE_NAME}.log" & disown
 }
 
+
+# WIP
+copus () {
+  ACTION=$(incus_question "send or fetch the clipboard ?" "send\nfetch")
+  [[ -z "${ACTION}" ]] && return
+
+  INSTANCE=$(incus_select_instance 'RUNNING' '' 'instance')
+  if ! incus exec "${INSTANCE}" -- which xclip; then
+    echo "[!] xclip not installed in chosen instance."
+    return
+  fi
+
+  if [[ "${ACTION}" == "send" ]]; then
+    echo "[*] Sending host clipboard to instance."
+    wl-paste | incus exec "${INSTANCE}" -- bash -l -c 'xclip -i -selection c'
+
+  elif [[ "${ACTION}" == "fetch" ]]; then
+    echo "[*] Fetch host clipboard from instance."
+    incus exec "${INSTANCE}" -- bash -l -c 'xclip -o' | wl-copy
+  fi
+
+}
 
 xephus () {
   local INSTANCE_DISPLAY="${1}"

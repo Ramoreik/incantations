@@ -266,6 +266,12 @@ malus () {
   local INSTANCE=""
   local USER=""
   local USERS=""
+  local STDIN_SCRIPT=""
+
+  # NOTE: STDIN has to be consumed before it is read by the calls to `fzf`, otherwise it will break.
+  if IFS= read -d '' -t 0.1 -n 1; then
+    STDIN_SCRIPT="$(cat /dev/stdin)"
+  fi
 
   INSTANCE=$(incus_select_instance 'RUNNING' '' 'malus')
   [[ -z "${INSTANCE}" ]] && return
@@ -285,6 +291,11 @@ malus () {
   else
     incus exec "${INSTANCE}" -- su -l "${USER}"
   fi
+
+  if [[ -n "${STDIN_SCRIPT}" ]]; then
+      incus exec "${INSTANCE}" --  bash -c "cat <<< ${STDIN_SCRIPT}"
+  fi
+
 }
 
 

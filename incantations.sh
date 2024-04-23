@@ -486,11 +486,11 @@ invokus () {
     [[ -z "${NAME}" ]] && NAME="cnt-${SUFFIX}"
 
     PROFILES=$(incus_select_profile '' '' 'profus' 'yes')
-    incus launch "${REMOTE}:${IMAGE}" -- "${NAME}"
-    # TODO: Replace this with '-p' flags on the launch command
+    incus create "${REMOTE}:${IMAGE}" -- "${NAME}"
     for profile in ${PROFILES}; do
       incus profile add "${NAME}" "${profile}"
     done
+    incus start "${NAME}"
 
   else
     echo "[!] Invalid choice, exiting."

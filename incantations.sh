@@ -466,7 +466,7 @@ invokus () {
   fi
 
   INSTANCE_TYPE=$(incus_question '' 'container\nvm')
-  [[ -z "${INSTANCE_TYPE}" ]] && { echo "[!] Did not choose and instance type, exiting."; return; }
+  [[ -z "${INSTANCE_TYPE}" ]] && { echo "[!] Did not choose an instance type, exiting."; return; }
 
   if [[ "${INSTANCE_TYPE}" == "vm" ]]; then
     IMAGE=$(incus_select_image "${REMOTE}" 'VIRTUAL-MACHINE' '' 'invokus')
@@ -485,7 +485,12 @@ invokus () {
     SUFFIX="$(echo "${IMAGE}" | tr '/' '-')-$(openssl rand -hex 3)"
     [[ -z "${NAME}" ]] && NAME="cnt-${SUFFIX}"
 
+    PROFILES=$(incus_select_profile '' '' 'profus' 'yes')
     incus launch "${REMOTE}:${IMAGE}" -- "${NAME}"
+    # TODO: Replace this with '-p' flags on the launch command
+    for profile in ${PROFILES}; do
+      incus profile add "${NAME}" "${profile}"
+    done
 
   else
     echo "[!] Invalid choice, exiting."
@@ -502,7 +507,6 @@ invokus () {
   fi
 
 }
-
 
 linvokus () {
   local INIT="${1}"
@@ -581,9 +585,10 @@ xeph () {
   local SCREEN="${2}"
   [[ -z "${SCREEN}" ]] && SCREEN="2560x1600"
 
+  [[ ! -d "${HOME}/.cache/xephyrus" ]] && mkdir -p "${HOME}/.cache/xephyrus"
   DISPLAY=:0 Xephyr -br -ac -noreset -resizeable \
                     -screen "${SCREEN}"  \
-                    ":${INSTANCE_DISPLAY}" &> "$HOME/.cache/xephyrus/${PROFILE_NAME}.log" & disown
+                    ":${INSTANCE_DISPLAY}" &> "$HOME/.cache/xephyrus/${INSTANCE_DISPLAY}.log" & disown
 }
 
 
@@ -633,7 +638,7 @@ xephus () {
   echo "[*] Launching "
   DISPLAY=:0 Xephyr -br -ac -noreset -resizeable \
                    -screen "${SCREEN}"  \
-                   ":${INSTANCE_DISPLAY}" &> "$HOME/.cache/xephyrus/${PROFILE_NAME}.log" & disown
+                   ":${INSTANCE_DISPLAY}" &> "$HOME/.cache/xephyrus/${INSTANCE_DISPLAY}.log" & disown
 
   if [[ "${PROFILES}" != *"${PROFILE_NAME}"* ]]; then
     incus profile create "${PROFILE_NAME}"

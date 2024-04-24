@@ -496,7 +496,7 @@ invokus () {
     SUFFIX="$(echo "${IMAGE}" | tr '/' '-')-$(openssl rand -hex 3)"
     [[ -z "${NAME}" ]] && NAME="cnt-${SUFFIX}"
 
-    PROFILES=$(incus_select_profile '' '' 'profus' 'yes')
+    PROFILES=$(incus_select_profile '' 'default' 'profus' 'yes')
     incus create "${REMOTE}:${IMAGE}" -- "${NAME}"
     for profile in ${PROFILES}; do
       incus profile add "${NAME}" "${profile}"
@@ -586,7 +586,8 @@ transfus () {
   for FILE in ${FILES}; do
     FILENAME=$(basename "${FILE}")
     incus exec "${DST}" -- bash -c "[[ -d '/shared' ]] || mkdir /shared"
-    incus exec "${SRC}" -- cat "/shared/${FILE}" |incus exec "${DST}" -- dd "of=/shared/${FILENAME}" status=progress
+    incus exec "${SRC}" -- cat "/shared/${FILE}" \
+      |incus exec "${DST}" -- dd "of=/shared/${FILENAME}" status=progress
   done
 }
 

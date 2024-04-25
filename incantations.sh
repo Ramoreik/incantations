@@ -555,6 +555,7 @@ sendus () {
   INSTANCE=$(incus_select_instance 'RUNNING' '' 'sendus')
   [[ -z "${INSTANCE}" ]] && return
 
+  IFS=$'\n'
   FILES=$(incus_select_files 'sendus')
   [[ -z "${FILES}" ]] && return
 
@@ -563,9 +564,11 @@ sendus () {
       echo "[!] File does not exist."
       return
     fi 
-  incus file push -p "${FILE}" "${INSTANCE}/shared/"
+    incus file push -p "${FILE}" "${INSTANCE}/shared/"
   done
+
 }
+
 
 transfus () {
   local SRC=""
@@ -605,6 +608,9 @@ xeph () {
 
 
 # WIP
+# This works BUT: 
+# - DISPLAY needs to be set in the instance (.profile)
+# - xclip has to be installed
 copus () {
   ACTION=$(incus_question "send or fetch the clipboard ?" "send\nfetch")
   [[ -z "${ACTION}" ]] && return
@@ -617,11 +623,11 @@ copus () {
 
   if [[ "${ACTION}" == "send" ]]; then
     echo "[*] Sending host clipboard to instance."
-    wl-paste | incus exec "${INSTANCE}" -- bash -l -c 'xclip -i -selection c'
+    wl-paste | incus exec "${INSTANCE}" -- su -l -c 'xclip -i -selection c'
 
   elif [[ "${ACTION}" == "fetch" ]]; then
     echo "[*] Fetch host clipboard from instance."
-    incus exec "${INSTANCE}" -- bash -l -c 'xclip -o' | wl-copy
+    incus exec "${INSTANCE}" -- su -l -c 'xclip -o' | wl-copy
   fi
 
 }

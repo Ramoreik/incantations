@@ -24,17 +24,9 @@
 # TODO: Invokus // isus :: Adapt questions to represent often used combinations. ([2 cpu, 4GB, 30GB storage][1 cpu, 1GB, 20GB], etc)
 # TODO: Instead of adding more and more words, there could be a flow to each one for various actions.
 
-
-which incus &>/dev/null \
-  || { echo '[!] incantations :: Incus missing, exiting.'; return; }
-
-which fzf &>/dev/null \
-  || { echo '[!] incantations :: Incus missing, exiting.'; return; }
-
-which Xephyr &>/dev/null \
-  || { 
-  echo '[!] incantations :: Xephyr missing, xephus and xeph will not work.'; }
-
+test -e "$(which incus)" || { echo "[incantations] Incus not installed, quitting."; return; }
+test -e "$(which fzf)" || { echo "[incantations] FZF not installed, quitting."; return; }
+test -e "$(which Xephyr)" || { echo "[incantations] Xephyr not installed, xeph and xephus will not work."; return; }
 
 read -rd '' XEPHYRUS_TEMPLATE_PROFILE << EOF
 config: {}

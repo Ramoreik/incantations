@@ -16,8 +16,8 @@
 | cat <init-script> | malus <script>    
 | ? Execute a script or gain a shell as a specific user 
 | > Choose a RUNNING instance
-|  > If a script was specified on stdin launch it 
-|  > If a script was speciifed as the first argument launch it else run an interactive shell
+| > If a script was specified on stdin launch it 
+| > If a script was speciifed as the first argument launch it else run an interactive shell
 |
 | cat <init-script> | invokus <init-script> <name> <remote> 
 | > Launches a new instance, prompts user to specify if it is a vm or not, then prompts for the image.
@@ -58,7 +58,7 @@
 |
 | xeph <*display> 
 | > Launch a Xephyr window using the given display number.
-
+|
 | xephus <*display> 
 | ? Opens a Xephyr window and creates a profile to share its socket with an instance.
 | > Launch a Xephyr window using the given display number.

@@ -601,7 +601,7 @@ xeph () {
   [[ -z "${SCREEN}" ]] && SCREEN="2560x1600"
 
   [[ ! -d "${HOME}/.cache/xephyrus" ]] && mkdir -p "${HOME}/.cache/xephyrus"
-  DISPLAY=:0 Xephyr -br -ac -noreset -resizeable \
+  DISPLAY=:0 Xephyr -no-host-grab -br -ac -noreset -resizeable \
                     -screen "${SCREEN}"  \
                     ":${INSTANCE_DISPLAY}" &> "$HOME/.cache/xephyrus/${INSTANCE_DISPLAY}.log" & disown
 }
@@ -654,7 +654,7 @@ xephus () {
   [[ -z "${SCREEN}" ]] && SCREEN="2560x1600"
 
   echo "[*] Launching "
-  DISPLAY=:0 Xephyr -br -ac -noreset -resizeable \
+  DISPLAY=:0 Xephyr -no-host-grab -br -ac -noreset -resizeable \
                    -screen "${SCREEN}"  \
                    ":${INSTANCE_DISPLAY}" &> "$HOME/.cache/xephyrus/${INSTANCE_DISPLAY}.log" & disown
 

@@ -10,7 +10,7 @@
 | '*' marks required arguments, all others are optional.
 | - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 |
-| malunimicon
+| malunomicon
 | ? Prints this page
 |
 | cat <init-script> | malus <script>    

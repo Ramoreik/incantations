@@ -200,7 +200,7 @@ read -rd '' USAGE << EOF
 | '*' marks required arguments, all others are optional.
 | - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 |
-| malunimicon
+| malunomicon
 | ? Prints this page
 |
 | malus <script>    

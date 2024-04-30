@@ -14,15 +14,7 @@
 # -- TODO --
 #
 # TODO: Create demagus, delete one or many images on a given remote;
-# TODO: Add the use of STDIN for certain commands. allowing stuff like: invokus < script.sh or invokus <<< "$()"
-# TODO: Add project management.
-# TODO: add profiles choice for invokus
-#
-# TODO: add clipboard forwarding using wl-clip & xclip. 
-#       A command that will let the user send the clipboard of a display to another display.
-#       From the host to a Xephyr window or between two Xephyr windows.
-
-# TODO: Explore the option for launching isolated applications in a xephyr window.
+# # TODO: Explore the option for launching isolated applications in a xephyr window.
 #       - Dynamically chose a DISPLAY number
 #       - Spawn a Xephyr window with an openbox or dwm inside.
 #       - Xephyr window should adapt to WM or DE in terms of screen space.
@@ -208,6 +200,9 @@ read -rd '' USAGE << EOF
 | '*' marks required arguments, all others are optional.
 | - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 |
+| malunimicon
+| ? Prints this page
+|
 | malus <script>    
 | > Choose a RUNNING instance and launch a script or interactive shell.
 |
@@ -253,7 +248,6 @@ read -rd '' USAGE << EOF
 | Logs for the Xephyr windows are store in '~/.cache/xephyrus/'
 |
 | - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 EOF
 
 echo "${USAGE}"
@@ -284,16 +278,17 @@ malus () {
       | grep -v '/bin/false' \
       | cut -d':' -f 1)
   USER=$(incus_question "Which user ?" "${USERS}")
+
+
   [[ -z "${USER}" ]] && return 
+  if [[ -n "${STDIN_SCRIPT}" ]]; then
+      incus exec "${INSTANCE}" --  bash -c "cat <<< ${STDIN_SCRIPT}"
+  fi
 
   if [[ -n "${SCRIPT}" ]]; then
     incus exec "${INSTANCE}" -- su -l "${USER}" <<< "$(cat "${SCRIPT}")"
   else
     incus exec "${INSTANCE}" -- su -l "${USER}"
-  fi
-
-  if [[ -n "${STDIN_SCRIPT}" ]]; then
-      incus exec "${INSTANCE}" --  bash -c "cat <<< ${STDIN_SCRIPT}"
   fi
 
 }

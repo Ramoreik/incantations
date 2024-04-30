@@ -10,6 +10,9 @@
 | '*' marks required arguments, all others are optional.
 | - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 |
+| malunimicon
+| ? Prints this page
+|
 | cat <init-script> | malus <script>    
 | ? Execute a script or gain a shell as a specific user 
 | > Choose a RUNNING instance

@@ -14,7 +14,7 @@
 # -- TODO --
 #
 # TODO: Create demagus, delete one or many images on a given remote;
-# # TODO: Explore the option for launching isolated applications in a xephyr window.
+# TODO: Explore the option for launching isolated applications in a xephyr window.
 #       - Dynamically chose a DISPLAY number
 #       - Spawn a Xephyr window with an openbox or dwm inside.
 #       - Xephyr window should adapt to WM or DE in terms of screen space.
@@ -26,6 +26,7 @@
 # TODO: If an FZF prompt is optional, specify it in the label.
 # TODO: Add a message when exiting fzf without and image for invokus
 # TODO: Add a message showing the default values for CPU,RAM and Storage when spawning VMs. (if it is confusing, just crash when nothing is specified.)
+# TODO: Convert the way arguments are passed around from positional to flag-based.
 
 
 test -e "$(which incus)" || { echo "[incantations] Incus not installed, quitting."; return; }

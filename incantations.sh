@@ -23,10 +23,9 @@
 
 # TODO: Invokus // isus :: Adapt questions to represent often used combinations. ([2 cpu, 4GB, 30GB storage][1 cpu, 1GB, 20GB], etc)
 # TODO: Instead of adding more and more words, there could be a flow to each one for various actions.
-# TODO: If an FZF prompt is optional, specify it in the label.
-# TODO: Add a message when exiting fzf without and image for invokus
-# TODO: Add a message showing the default values for CPU,RAM and Storage when spawning VMs. (if it is confusing, just crash when nothing is specified.)
 # TODO: Convert the way arguments are passed around from positional to flag-based.
+# TODO: Invokus, cleanup the way profiles are handled so it is deduplicated.
+# TODO: Add support for xclip on host in copus
 
 
 test -e "$(which incus)" || { echo "[incantations] Incus not installed, quitting."; return; }
@@ -45,10 +44,11 @@ devices:
 name: xephyr-:DISPLAY:
 EOF
 
+ERR_REQUIRED="[!] No selection made on required argument, exiting."
 
-CPU_CHOICES='1\n2\n4\n6\n8\n10'
-MEMORY_CHOICES='2GB\n4GB\n8GB\n16GB\n32GB'
-ROOT_SIZE_CHOICES='20GB\n30GB\n40GB\n60GB\n80GB\n100GB'
+CPU_CHOICES="1\n2\n4\n6\n8\n10"
+MEMORY_CHOICES="2GB\n4GB\n8GB\n16GB\n32GB"
+ROOT_SIZE_CHOICES="20GB\n30GB\n40GB\n60GB\n80GB\n100GB"
 DEFAULT_FZF_HEIGHT="~40%"
 
 
@@ -63,7 +63,7 @@ incus_fzf () {
   local PROMPT_DELIM=")>"
   local POINTER=")>"
 
-  [[ "yes" == "${MULTI}" ]] && OPTS='-m'
+  [[ "yes" == "${MULTI}" ]] && OPTS="-m"
 
   # NOTE: :https://minsw.github.io/fzf-color-picker/
   fzf $OPTS --ansi --pointer "${POINTER}" \
@@ -90,7 +90,7 @@ incus_select_instance() {
   [[ -n "${FILTER}" ]] && INSTANCES=$(echo "${INSTANCES}" | grep -v "${FILTER}")
   [[ -n "${QUERY}" ]] && INSTANCES=$(echo "${INSTANCES}" | grep "${QUERY}")
   echo "${INSTANCES}" \
-    |  cut -d',' -f 1 \
+    |  cut -d"," -f 1 \
     | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}" "${MULTI}"
 }
 
@@ -107,7 +107,7 @@ incus_select_image () {
   [[ -n "${FILTER}" ]] && IMAGES=$(echo "${IMAGES}" | grep -v "${FILTER}")
   [[ -n "${QUERY}" ]] && IMAGES=$(echo "${IMAGES}" | grep "${QUERY}")
   echo "${IMAGES}" \
-    | cut -d',' -f 1 \
+    | cut -d"," -f 1 \
     | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}"
 }
 
@@ -124,7 +124,7 @@ incus_select_profile() {
   [[ -n "${FILTER}" ]] && PROFILES=$(echo "${PROFILES}" | grep -v "${FILTER}")
   [[ -n "${QUERY}" ]] && PROFILES=$(echo "${PROFILES}" | grep "${QUERY}")
   echo "${PROFILES}" \
-    | cut -d',' -f 1 \
+    | cut -d"," -f 1 \
     | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}" "${MULTI}"
 }
 
@@ -141,7 +141,7 @@ incus_select_project() {
   [[ -n "${FILTER}" ]] && PROJECTS=$(echo "${PROJECTS}" | grep -v "${FILTER}")
   [[ -n "${QUERY}" ]] && PROJECTS=$(echo "${PROJECTS}" | grep "${QUERY}")
   echo "${PROJECTS}" \
-    | cut -d',' -f 1 \
+    | cut -d"," -f 1 \
     | incus_fzf "${PROMPT}" "${DEFAULT_FZF_HEIGHT}" "${LABEL}" "${MULTI}"
 }
 
@@ -149,7 +149,7 @@ incus_select_project() {
 incus_select_files() {
   local PROMPT="${1}"
   local LABEL="select file"
-  incus_fzf "${PROMPT}" "~30%" "${LABEL}" 'yes'
+  incus_fzf "${PROMPT}" "~30%" "${LABEL}" "yes"
 }
 
 
@@ -168,14 +168,18 @@ incus_create_vm() {
   local REMOTE="${2}"
   local IMAGE="${3}"
 
-  CPU=$(incus_question 'How many vCPUs? ' "${CPU_CHOICES}")
-  MEMORY=$(incus_question 'How much memory ?', "${MEMORY_CHOICES}")
-  ROOT_SIZE=$(incus_question 'How much storage ?', "${ROOT_SIZE_CHOICES}")
+  CPU=$(incus_question "How many vCPUs?" "${CPU_CHOICES}")
+  [[ -z "${CPU}" ]] && { echo "${ERR_REQUIRED}"; return; }
+  MEMORY=$(incus_question "How much memory ?" "${MEMORY_CHOICES}")
+  [[ -z "${MEMORY}" ]] && { echo "${ERR_REQUIRED}"; return; }
+  ROOT_SIZE=$(incus_question "How much storage ?" "${ROOT_SIZE_CHOICES}")
+  [[ -z "${ROOT_SIZE}" ]] && { echo "${ERR_REQUIRED}"; return; }
   incus launch --vm \
       -c limits.cpu="${CPU}" \
       -c limits.memory="${MEMORY}" \
       -d root,size="${ROOT_SIZE}" \
       "${REMOTE}:${IMAGE}" -- "${NAME}"
+  wait_for_prompt "${NAME}"
 }
 
 
@@ -308,20 +312,19 @@ malus () {
     STDIN_SCRIPT="$(cat /dev/stdin)"
   fi
 
-  INSTANCE=$(incus_select_instance 'RUNNING' '' 'malus')
-  [[ -z "${INSTANCE}" ]] && return
+  INSTANCE=$(incus_select_instance "RUNNING" "" "malus | instance*")
+  [[ -z "${INSTANCE}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
   wait_for_prompt "${INSTANCE}"
 
   USERS=$(\
       incus exec "${INSTANCE}" -- cat /etc/passwd \
-      | grep -v '/sbin/nologin' \
-      | grep -v '/bin/false' \
-      | cut -d':' -f 1)
+      | grep -v "/sbin/nologin" \
+      | grep -v "/bin/false" \
+      | cut -d":" -f 1)
   USER=$(incus_question "Which user ?" "${USERS}")
+  [[ -z "${USER}" ]] &&  { echo "${ERR_REQUIRED}"; return; }
 
-
-  [[ -z "${USER}" ]] && return 
   if [[ -n "${STDIN_SCRIPT}" ]]; then
       incus exec "${INSTANCE}" --  bash -c "cat <<< ${STDIN_SCRIPT}"
   fi
@@ -337,26 +340,26 @@ malus () {
 
 # Yes, like a nuke
 nukus () {
-  local SELECTION=""
+  local INSTANCES=""
 
-  SELECTION=$(incus_select_instance '' '' 'nukus' 'yes')
-  [[ -z $SELECTION ]] && return
+  INSTANCES=$(incus_select_instance "" "" "nukus | instances*" "yes")
+  [[ -z $INSTANCES ]] && { echo "${ERR_REQUIRED}"; return; }
 
-  for INSTANCE in ${SELECTION}; do
-    REPLY=$(incus_question "Are you sure to delete '${INSTANCE}' ?" 'yes\nno')
+  for INSTANCE in ${INSTANCES}; do
+    REPLY=$(incus_question "Are you sure to delete '${INSTANCE}' ?" "yes\nno")
     [[ "${REPLY}" == "yes" ]] && incus delete -f "${INSTANCE}"
   done
 }
 
 
 delus () {
-  local SELECTION=""
+  local INSTANCES=""
 
-  SELECTION=$(incus_select_instance '' 'RUNNING' 'delus' 'yes')
-  [[ -z $SELECTION ]] && return
+  INSTANCES=$(incus_select_instance "" "RUNNING" "delus | instances*" "yes")
+  [[ -z $INSTANCES ]] && { echo "${ERR_REQUIRED}"; return; }
 
-  for INSTANCE in ${SELECTION}; do
-    REPLY=$(incus_question "Are you sure to delete '${INSTANCE}' ?" 'yes\nno')
+  for INSTANCE in ${INSTANCES}; do
+    REPLY=$(incus_question "Are you sure to delete '${INSTANCE}' ?" "yes\nno")
     incus delete "${INSTANCE}"
   done
 }
@@ -367,35 +370,37 @@ projectus () {
   [[ -z "${REMOTE}" ]] && REMOTE="local"
 
   if [[ -z "${NAME}" ]]; then
-    SELECTION=$(incus_select_project '' '' 'projectus')
-    [[ -z "${SELECTION}" ]] && return
-    incus project switch "${SELECTION}"
+    PROJECT=$(incus_select_project "" "" "projectus | project*")
+    [[ -z "${PROJECT}" ]] && { echo "${ERR_REQUIRED}"; return;}
+    incus project switch "${PROJECT}"
   else
-    REPLY=$(incus_question "Are you sure to create '${NAME}' project ?" 'yes\nno')
+    REPLY=$(incus_question "Are you sure to create '${NAME}' project ?" "yes\nno")
     incus project create "${NAME}"
     incus project switch "${NAME}"
   fi
 }
 
 stopus () {
-  local SELECTION=""
+  local INSTANCES=""
 
-  SELECTION=$(incus_select_instance 'RUNNING' '' 'stopus' 'yes')
-  [[ -z $SELECTION ]] && return
+  INSTANCES=$(incus_select_instance "RUNNING" "" "stopus | instances*" "yes")
+  [[ -z $INSTANCES ]] && { echo "${ERR_REQUIRED}"; return; }
 
-  for INSTANCE in ${SELECTION}; do
+  for INSTANCE in ${INSTANCES}; do
+    echo "[?] Stopping ${INSTANCE} ..."
     incus stop -f "${INSTANCE}" 
   done
 }
 
 
 startus () {
-  local SELECTION=""
+  local INSTANCES=""
 
-  SELECTION=$(incus_select_instance '' 'RUNNING' 'startus' 'yes')
-  [[ -z $SELECTION ]] && return
+  INSTANCES=$(incus_select_instance "" "RUNNING" "startus | instances*" "yes")
+  [[ -z $INSTANCES ]] && { echo "${ERR_REQUIRED}"; return; }
 
-  for INSTANCE in ${SELECTION}; do
+  for INSTANCE in ${INSTANCES}; do
+    echo "[?] Starting ${INSTANCE} ..."
     incus start "${INSTANCE}" 
   done
 }
@@ -405,13 +410,14 @@ aprofus () {
   local INSTANCE=""
   local PROFILES=""
 
-  PROFILES=$(incus_select_profile '' '' 'profus' 'yes')
-  [[ -z "${PROFILES}" ]] && return
+  PROFILES=$(incus_select_profile "" "" "profus | profiles*" "yes")
+  [[ -z "${PROFILES}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
-  INSTANCE=$(incus_select_instance '' '' 'profus' )
-  [[ -z "${INSTANCE}" ]] && return
+  INSTANCE=$(incus_select_instance "" "" "profus | instance*" )
+  [[ -z "${INSTANCE}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
   for PROFILE in $PROFILES; do
+    echo "[?] Adding ${PROFILE}"
     incus profile add "${INSTANCE}" "${PROFILE}"
   done
 }
@@ -421,11 +427,14 @@ deprofus () {
   local INSTANCE=""
   local PROFILES=""
 
-  PROFILES=$(incus_select_profile '' '' 'profus' 'yes')
-  [[ -z "${PROFILES}" ]] && return
+  PROFILES=$(incus_select_profile "" "" "profus | profiles*" "yes")
+  [[ -z "${PROFILES}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
   for PROFILE in $PROFILES; do
-    incus profile delete "${PROFILE}"
+    REPLY=$(incus_question "Are you sure to delete '${PROFILE}' ?" "yes\nno")
+    if [[ "${REPLY}" == "yes" ]]; then
+      incus profile delete "${PROFILE}"
+    fi
   done
 }
 
@@ -434,18 +443,19 @@ reprofus () {
   local INSTANCE=""
   local PROFILES=""
   
-  INSTANCE=$(incus_select_instance '' '' 'profus' )
-  [[ -z "${INSTANCE}" ]] && return
+  INSTANCE=$(incus_select_instance "" "" "profus | instance*" )
+  [[ -z "${INSTANCE}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
   INSTANCE_PROFILES=$(\
     incus config get "${INSTANCE}" -p profiles \
-    |tr -d '[' \
-    |tr -d ']' \
-    |tr ' ' '\n')
-  PROFILES=$(incus_question 'Which profiles to remove ?' "${INSTANCE_PROFILES}" )
-  [[ -z "${PROFILES}" ]] && return
+    |tr -d "[" \
+    |tr -d "]" \
+    |tr " " "\n")
+  PROFILES=$(incus_question "Which profiles to remove ?" "${INSTANCE_PROFILES}" )
+  [[ -z "${PROFILES}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
   for PROFILE in $PROFILES; do
+    echo "[?] Removing ${PROFILE} from instance"
     incus profile remove "${INSTANCE}" "${PROFILE}"
   done
 }
@@ -457,11 +467,11 @@ creatus () {
   local DIR="${HOME}/.incantations.d"
   [[ -d "${DIR}" ]] || mkdir -p "${DIR}" 
 
-  BOOTSTRAPS=$(echo ${DIR}/*| tr ' ' '\n')
-  BOOTSTRAP=$(incus_question 'Which base ?' "${BOOTSTRAPS}")
-  [[ -z "${BOOTSTRAP}" ]] && return
+  BOOTSTRAPS=$(echo ${DIR}/*| tr " " "\n")
+  BOOTSTRAP=$(incus_question "Which base ?" "${BOOTSTRAPS}")
+  [[ -z "${BOOTSTRAP}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
-  cd "${BOOTSTRAP}" || return
+  cd "${BOOTSTRAP}" || { echo "${ERR_REQUIRED}";return; }
   ./create.sh "$@"
 }
 
@@ -473,12 +483,15 @@ isus () {
   local ROOT_SIZE="$4"
 
   [[ -z "${NAME}" ]] && NAME="isus-$(openssl rand -hex 5)"
-  CPU=$(incus_question 'How many vCPUs? ' "${CPU_CHOICES}")
-  [[ -z "${CPU}" ]] && return
-  MEMORY=$(incus_question 'How much memory ?' "${MEMORY_CHOICES}")
-  [[ -z "${MEMORY}" ]] && return
-  ROOT_SIZE=$(incus_question 'How much storage ?', "${ROOT_SIZE_CHOICES}")
-  [[ -z "${ROOT_SIZE}" ]] && return
+  CPU=$(incus_question "How many vCPUs? " "${CPU_CHOICES}")
+  [[ -z "${CPU}" ]] && { echo "${ERR_REQUIRED}"; return; }
+  MEMORY=$(incus_question "How much memory ?" "${MEMORY_CHOICES}")
+  [[ -z "${MEMORY}" ]] && { echo "${ERR_REQUIRED}"; return; }
+  ROOT_SIZE=$(incus_question "How much storage ?" "${ROOT_SIZE_CHOICES}")
+  [[ -z "${ROOT_SIZE}" ]] && { echo "${ERR_REQUIRED}"; return; }
+
+  ISO=$(incus_select_files "isus | iso*")
+  [[ -n "${ISO}" && -f "${ISO}" ]] || { echo "${ERR_REQUIRED}"; return; }
 
   incus init  --empty \
     --vm \
@@ -487,8 +500,6 @@ isus () {
     -d root,size="${ROOT_SIZE}" \
     -- "${NAME}"
 
-  ISO=$(incus_select_files 'isus')
-  [[ -n "${ISO}" && -f "${ISO}" ]] || return
   incus config device add "${NAME}" \
     iso disk source="$PWD/${ISO}" boot.priority=10
 
@@ -508,31 +519,32 @@ invokus () {
   local STDIN_SCRIPT=""
 
   # NOTE: STDIN has to be consumed before it is read by the calls to `fzf`, otherwise it will break.
-  if IFS= read -d '' -t 0.1 -n 1; then
+  if IFS= read -d "" -t 0.1 -n 1; then
     STDIN_SCRIPT="$(cat /dev/stdin)"
   fi
 
-  INSTANCE_TYPE=$(incus_question '' 'container\nvm')
-  [[ -z "${INSTANCE_TYPE}" ]] && { echo "[!] Did not choose an instance type, exiting."; return; }
+  INSTANCE_TYPE=$(incus_question "" "container\nvm")
+  [[ -z "${INSTANCE_TYPE}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
   if [[ "${INSTANCE_TYPE}" == "vm" ]]; then
-    IMAGE=$(incus_select_image "${REMOTE}" 'VIRTUAL-MACHINE' '' 'invokus')
-    [[ -z "${IMAGE}" ]] && return
+    IMAGE=$(incus_select_image "${REMOTE}" "VIRTUAL-MACHINE" "" "invokus | image*")
+    [[ -z "${IMAGE}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
-    SUFFIX="$(echo "${IMAGE}" | tr '/' '-')-$(openssl rand -hex 3)"
+    SUFFIX="$(echo "${IMAGE}" | tr "/" "-")-$(openssl rand -hex 3)"
     [[ -z "${NAME}" ]] && NAME="vm-${SUFFIX}"
 
     incus_create_vm "${NAME}" "${REMOTE}" "${IMAGE}"
-    wait_for_prompt "${NAME}"
 
   elif [[ "${INSTANCE_TYPE}" == "container" ]]; then
-    IMAGE=$(incus_select_image "${REMOTE}" 'CONTAINER' '' 'invokus')
-    [[ -z "${IMAGE}" ]] && return
+    IMAGE=$(incus_select_image "${REMOTE}" "CONTAINER" "" "invokus | image*")
+    [[ -z "${IMAGE}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
-    SUFFIX="$(echo "${IMAGE}" | tr '/' '-')-$(openssl rand -hex 3)"
+    SUFFIX="$(echo "${IMAGE}" | tr "/" "-")-$(openssl rand -hex 3)"
     [[ -z "${NAME}" ]] && NAME="cnt-${SUFFIX}"
 
-    PROFILES=$(incus_select_profile '' 'default' 'profus' 'yes')
+    PROFILES=$(incus_select_profile "" "default" "profus | profiles" "yes")
+    [[ -z "${PROFILES}" ]] && { echo "[?] No profile selected."; }
+
     incus create "${REMOTE}:${IMAGE}" -- "${NAME}"
     for profile in ${PROFILES}; do
       incus profile add "${NAME}" "${profile}"
@@ -544,7 +556,7 @@ invokus () {
   fi
 
   if [[ -n "${STDIN_SCRIPT}" ]]; then
-      incus exec "${NAME}" --  bash -c "cat <<< ${STDIN_SCRIPT}"
+      incus exec "${NAME}" --  bash -c "cat <<< ${STDIN_SCRIPT}" # TODO: Cleanup
   fi
 
   if [[ -n "${INIT}"  ]]; then
@@ -570,8 +582,8 @@ publicus () {
   fi
 
   local INSTANCE=""
-  INSTANCE=$(incus_select_instance '' '' 'publicus')
-  [[ -z "${INSTANCE}" ]] && return
+  INSTANCE=$(incus_select_instance "" "" "publicus | instance*")
+  [[ -z "${INSTANCE}" ]] && { echo "${ERR_REQUIRED}"; return; }
 
   STATE=$(incus config get "${INSTANCE}" volatile.last_state.power)
   if [[ "${STATE}" != "STOPPED" ]]; then
@@ -588,11 +600,11 @@ sendus () {
   local FILES=""
   local INSTANCE=""
 
-  INSTANCE=$(incus_select_instance 'RUNNING' '' 'sendus')
+  INSTANCE=$(incus_select_instance "RUNNING" "" "sendus")
   [[ -z "${INSTANCE}" ]] && return
 
   IFS=$'\n'
-  FILES=$(incus_select_files 'sendus')
+  FILES=$(incus_select_files "sendus")
   [[ -z "${FILES}" ]] && return
 
   for FILE in $FILES; do
@@ -610,16 +622,16 @@ transfus () {
   local SRC=""
   local DST=""
 
-  SRC=$(incus_select_instance 'RUNNING' '' 'src')
+  SRC=$(incus_select_instance "RUNNING" "" "src")
   [[ -z "${SRC}" ]] && return
 
   # TODO : kinda ugly, fix
   SHARED_FILES=$(incus exec "${SRC}" -- bash -c "[[ -d '/shared' ]] && ls -ap /shared | grep -v '/'")
 
-  FILES=$(incus_question 'files to transfer' "${SHARED_FILES}" 'yes')
+  FILES=$(incus_question "files to transfer" "${SHARED_FILES}" "yes")
   [[ -z "${FILES}" ]] && return
 
-  DST=$(incus_select_instance 'RUNNING' '' 'dst')
+  DST=$(incus_select_instance "RUNNING" "" "dst")
   [[ -z "${DST}" ]] && return
 
   for FILE in ${FILES}; do
@@ -651,7 +663,7 @@ copus () {
   ACTION=$(incus_question "send or fetch the clipboard ?" "send\nfetch")
   [[ -z "${ACTION}" ]] && return
 
-  INSTANCE=$(incus_select_instance 'RUNNING' '' 'instance')
+  INSTANCE=$(incus_select_instance "RUNNING" "" "instance")
   if ! incus exec "${INSTANCE}" -- which xclip; then
     echo "[!] xclip not installed in chosen instance."
     return
@@ -659,11 +671,11 @@ copus () {
 
   if [[ "${ACTION}" == "send" ]]; then
     echo "[*] Sending host clipboard to instance."
-    wl-paste | incus exec "${INSTANCE}" -- su -l -c 'xclip -i -selection c'
+    wl-paste | incus exec "${INSTANCE}" -- su -l -c "xclip -i -selection c"
 
   elif [[ "${ACTION}" == "fetch" ]]; then
     echo "[*] Fetch host clipboard from instance."
-    incus exec "${INSTANCE}" -- su -l -c 'xclip -o' | wl-copy
+    incus exec "${INSTANCE}" -- su -l -c "xclip -o" | wl-copy
   fi
 
 }
@@ -674,7 +686,7 @@ xephus () {
   [[ -z "${INSTANCE_DISPLAY}" ]] && return
 
   local PROFILES=""
-  PROFILES=$(incus profile list -f csv|cut -d',' -f 1)
+  PROFILES=$(incus profile list -f csv|cut -d"," -f 1)
   PROFILE_NAME="xephyrus-${INSTANCE_DISPLAY}"
 
   if [[ -f "/tmp/.X11-unix/X${INSTANCE_DISPLAY}" ]]; then

@@ -23,6 +23,10 @@
 
 # TODO: Invokus // isus :: Adapt questions to represent often used combinations. ([2 cpu, 4GB, 30GB storage][1 cpu, 1GB, 20GB], etc)
 # TODO: Instead of adding more and more words, there could be a flow to each one for various actions.
+# TODO: If an FZF prompt is optional, specify it in the label.
+# TODO: Add a message when exiting fzf without and image for invokus
+# TODO: Add a message showing the default values for CPU,RAM and Storage when spawning VMs. (if it is confusing, just crash when nothing is specified.)
+
 
 test -e "$(which incus)" || { echo "[incantations] Incus not installed, quitting."; return; }
 test -e "$(which fzf)" || { echo "[incantations] FZF not installed, quitting."; return; }
@@ -620,8 +624,8 @@ transfus () {
   for FILE in ${FILES}; do
     FILENAME=$(basename "${FILE}")
     incus exec "${DST}" -- bash -c "[[ -d '/shared' ]] || mkdir /shared"
-    incus exec "${SRC}" -- cat "/shared/${FILE}" \
-      |incus exec "${DST}" -- dd "of=/shared/${FILENAME}" status=progress
+    incus exec "${SRC}" -- dd "if=/shared/${FILE}" "bs=1M" status=progress \
+      |incus exec "${DST}" -- dd "of=/shared/${FILENAME}" "bs=1M"
   done
 }
 

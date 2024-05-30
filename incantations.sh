@@ -26,6 +26,7 @@
 # TODO: Convert the way arguments are passed around from positional to flag-based.
 # TODO: Invokus, cleanup the way profiles are handled so it is deduplicated.
 # TODO: Add support for xclip on host in copus
+# TODO: Print a message and return when there are no choices
 
 
 test -e "$(which incus)" || { echo "[incantations] Incus not installed, quitting."; return; }
@@ -45,6 +46,7 @@ name: xephyr-:DISPLAY:
 EOF
 
 ERR_REQUIRED="[!] No selection made on required argument, exiting."
+ERR_NO_OPTIONS="[!] No options were available."
 
 CPU_CHOICES="1\n2\n4\n6\n8\n10"
 MEMORY_CHOICES="2GB\n4GB\n8GB\n16GB\n32GB"
@@ -360,7 +362,7 @@ delus () {
 
   for INSTANCE in ${INSTANCES}; do
     REPLY=$(incus_question "Are you sure to delete '${INSTANCE}' ?" "yes\nno")
-    incus delete "${INSTANCE}"
+    [[ "${REPLY}" == "yes" ]] && incus delete -f "${INSTANCE}"
   done
 }
 
@@ -375,8 +377,10 @@ projectus () {
     incus project switch "${PROJECT}"
   else
     REPLY=$(incus_question "Are you sure to create '${NAME}' project ?" "yes\nno")
-    incus project create "${NAME}"
-    incus project switch "${NAME}"
+    if [[ "${REPLY}" == "yes" ]]; then
+      incus project create "${NAME}"
+      incus project switch "${NAME}"
+    fi
   fi
 }
 
@@ -432,9 +436,7 @@ deprofus () {
 
   for PROFILE in $PROFILES; do
     REPLY=$(incus_question "Are you sure to delete '${PROFILE}' ?" "yes\nno")
-    if [[ "${REPLY}" == "yes" ]]; then
-      incus profile delete "${PROFILE}"
-    fi
+    [[ "${REPLY}" == "yes" ]] && incus profile delete "${PROFILE}"
   done
 }
 
@@ -588,9 +590,7 @@ publicus () {
   STATE=$(incus config get "${INSTANCE}" volatile.last_state.power)
   if [[ "${STATE}" != "STOPPED" ]]; then
     REPLY=$(incus_question "Stop instance '${INSTANCE}' ?" "yes\nno")
-    if [[ "${REPLY}" == "yes" ]]; then
-      incus stop -f "${INSTANCE}"
-    fi
+    [[ "${REPLY}" == "yes" ]] && incus stop -f "${INSTANCE}"
   fi
   incus publish "${INSTANCE}" --alias "${ALIAS}"
 }
@@ -683,7 +683,7 @@ copus () {
 xephus () {
   local INSTANCE_DISPLAY="${1}"
   local SCREEN="${2}"
-  [[ -z "${INSTANCE_DISPLAY}" ]] && return
+  [[ -z "${INSTANCE_DISPLAY}" ]] && { echo "[!] No DISPLAY specified, exiting."; return; }
 
   local PROFILES=""
   PROFILES=$(incus profile list -f csv|cut -d"," -f 1)
@@ -712,5 +712,4 @@ xephus () {
   fi
 
 }
-
 
